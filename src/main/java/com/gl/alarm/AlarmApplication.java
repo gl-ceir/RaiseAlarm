@@ -17,6 +17,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import com.gl.alarm.configuration.ConnectionConfiguration;
 import com.gl.alarm.configuration.PropertiesReader;
 import com.ulisesbocchio.jasyptspringboot.annotation.EnableEncryptableProperties;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,22 +31,23 @@ import org.apache.logging.log4j.Logger;
 public class AlarmApplication {
 
     static Logger logger = LogManager.getLogger(AlarmApplication.class);
+    static String appdbName = null;
 
     static PropertiesReader propertiesReader = null;
     static ConnectionConfiguration connectionConfiguration = null;
-
     public static void main(String[] args) {
+        ApplicationContext context = SpringApplication.run(AlarmApplication.class, args);
         String alertCode = args[0];
         String alertMessage = args[1];
         String alertProcess = args[2];
         String userId = args[3];
-        ApplicationContext context = SpringApplication.run(AlarmApplication.class, args);
+        logger.info("Alert " + alertCode + ",Alert msg=" + alertMessage + ",Process name = " + alertProcess + ", via Id =" + userId);
         propertiesReader = (PropertiesReader) context.getBean("propertiesReader");
+        appdbName = propertiesReader.appdbName;
         connectionConfiguration = (ConnectionConfiguration) context.getBean("connectionConfiguration");
         Map<String, String> placeholderMapForAlert = new HashMap<>();
         placeholderMapForAlert.put("<e>", alertMessage);
         placeholderMapForAlert.put("<process_name>", alertProcess);
-        logger.info("Alert " + alertCode + ",Alert msg=" + alertMessage + ",Process name = " + alertProcess + ", via Id =" + userId);
         raiseAlert(alertCode, placeholderMapForAlert, userId);
         logger.error("Alert " + alertCode + " is raised. So, doing nothing.");
         System.exit(0);
@@ -54,13 +57,14 @@ public class AlarmApplication {
         try (Connection conn = connectionConfiguration.getConnection(); Statement stmt = conn.createStatement();) {
             String alertDescription = getAlertbyId(alertId);
             if (Objects.nonNull(bodyPlaceHolderMap)) {
-                for (Map.Entry<String, String> entry : bodyPlaceHolderMap.entrySet()) {
+                for (Map.Entry<String, String> entry
+                        : bodyPlaceHolderMap.entrySet()) {
                     logger.info("Placeholder key : " + entry.getKey() + " value : " + entry.getValue());
                     alertDescription = alertDescription.replaceAll(entry.getKey(), entry.getValue());
                 }
             }
             logger.info("alert message: " + alertDescription);
-            String sql = "Insert into app.sys_generated_alert (alert_id,created_on,modified_on,description,status,user_id)"
+            String sql = "Insert into " + appdbName + ".sys_generated_alert (alert_id,created_on,modified_on,description,status,user_id)"
                     + "values('" + alertId + "',now(), now() ,'" + alertDescription
                     + "',0," + userId + ")";
             logger.info("Inserting alert  [" + sql + "]");
@@ -77,7 +81,7 @@ public class AlarmApplication {
     public static String getAlertbyId(String alertId) {
         String description = "";
         try (Connection conn = connectionConfiguration.getConnection(); Statement stmt = conn.createStatement();) {
-            String sql = "select description from app.cfg_feature_alert where alert_id ='" + alertId + "'";
+            String sql = "select description from " + appdbName + ".cfg_feature_alert where alert_id ='" + alertId + "'";
             logger.info("Fetching alert via[" + sql + "]");
             ResultSet rs = stmt.executeQuery(sql);
             while (rs.next()) {

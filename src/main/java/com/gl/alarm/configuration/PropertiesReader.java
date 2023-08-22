@@ -6,13 +6,26 @@ import org.springframework.context.annotation.PropertySources;
 import org.springframework.stereotype.Component;
 
 @Component
-//@PropertySource("classpath:application.properties")
+
 @PropertySources({
-//@PropertySource(value = {"file:${spring.config.location}/application.properties"}, ignoreResourceNotFound = true),
-@PropertySource(value = {"file:application.properties"}, ignoreResourceNotFound = true)
+    @PropertySource(value = {"file:application.properties"}, ignoreResourceNotFound = true),
+    @PropertySource(value = {"file:configuration.properties"}, ignoreResourceNotFound = true)
 })
+
 public class PropertiesReader {
 
 	@Value("${spring.jpa.properties.hibernate.dialect}")
-	public String dialect;
+    public String dialect;
+
+    @Value("${appdbName}")
+    public String appdbName;
+
+    @Value("${repdbName}")
+    public String repdbName;
+
+    @Value("${auddbName}")
+    public String auddbName;
+
+    @Value("${oamdbName}")
+    public String oamdbName;
 }
