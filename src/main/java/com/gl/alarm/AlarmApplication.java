@@ -15,10 +15,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 import com.gl.alarm.configuration.ConnectionConfiguration;
-import com.gl.alarm.configuration.PropertiesReader;
+// import com.gl.alarm.configuration.PropertiesReader;
 import com.ulisesbocchio.jasyptspringboot.annotation.EnableEncryptableProperties;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,9 +29,9 @@ import org.apache.logging.log4j.Logger;
 public class AlarmApplication {
 
     static Logger logger = LogManager.getLogger(AlarmApplication.class);
-    static String appdbName = null;
+    static String appdbName = "app";
 
-    static PropertiesReader propertiesReader = null;
+    //  static PropertiesReader propertiesReader = null;
     static ConnectionConfiguration connectionConfiguration = null;
     public static void main(String[] args) {
         ApplicationContext context = SpringApplication.run(AlarmApplication.class, args);
@@ -42,8 +40,8 @@ public class AlarmApplication {
         String alertProcess = args[2];
         String userId = args[3];
         logger.info("Alert " + alertCode + ",Alert msg=" + alertMessage + ",Process name = " + alertProcess + ", via Id =" + userId);
-        propertiesReader = (PropertiesReader) context.getBean("propertiesReader");
-        appdbName = propertiesReader.appdbName;
+        //  propertiesReader = (PropertiesReader) context.getBean("propertiesReader");
+        //  appdbName = propertiesReader.appdbName;
         connectionConfiguration = (ConnectionConfiguration) context.getBean("connectionConfiguration");
         Map<String, String> placeholderMapForAlert = new HashMap<>();
         placeholderMapForAlert.put("<e>", alertMessage);
@@ -52,6 +50,7 @@ public class AlarmApplication {
         logger.error("Alert " + alertCode + " is raised. So, doing nothing.");
         System.exit(0);
     }
+
 
     public static void raiseAlert(String alertId, Map<String, String> bodyPlaceHolderMap, String userId) {
         try (Connection conn = connectionConfiguration.getConnection(); Statement stmt = conn.createStatement();) {
@@ -95,6 +94,25 @@ public class AlarmApplication {
             logger.error("No able to update  " + e.toString() + " i.e. " + e.getLocalizedMessage());
         } finally {
             return description;
+        }
+    }
+
+    public static void raiseAlertnew(String alertId, String alertMessage, String alertProcess, int userId) {
+        //ConnectionConfiguration is used to create jdbc connection. Dev can change this as per code
+        String appdbName = "app";
+        try (Connection conn = (Connection) connectionConfiguration.getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("select description from " + appdbName + ".cfg_feature_alert where alert_id ='" + alertId + "'");) {
+            String alertDescription = null;
+            while (rs.next()) {
+                alertDescription = rs.getString("description")
+                        .replaceAll("<e>", alertMessage)
+                        .replaceAll("<process_name>", alertProcess);
+            }
+            String sql = "Insert into " + appdbName + ".sys_generated_alert (alert_id,created_on,modified_on,description,user_id)"
+                    + "values('" + alertId + "',now(), now() ,'" + alertDescription + "'," + userId + ")";
+            logger.info("Inserting alert  [" + sql + "]");
+            stmt.executeUpdate(sql);
+        } catch (Exception e) {
+            logger.error("Not able to update  " + e.toString() + " i.e. " + e.getLocalizedMessage());
         }
     }
 }
