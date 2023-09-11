@@ -1,7 +1,5 @@
 package co.glocks;
 
-//import com.gl.alarm.configuration.MySQLConnection;
-import com.gl.alarm.configuration.MySQLConnection;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -16,17 +14,11 @@ public class AlertApplication {
 
     static final Logger logger = LogManager.getLogger(AlertApplication.class);
 
-    public static boolean raiseAlert(String alertId, String alertMessage, String alertProcess, int userId) {
+    public static boolean raiseAlert(Connection conn, String alertId, String alertMessage, String alertProcess, int userId) {
         logger.info("Alert " + alertId + ",Alert msg=" + alertMessage + ", Process name = " + alertProcess + ", via Id =" + userId);
         String appdbName = "app";
-
-        try {
-            Connection conn = new MySQLConnection().getConnection();
-            logger.info("Connection " + conn);
-            Statement stmt = conn.createStatement();
-            String query = "select description from " + appdbName + ".cfg_feature_alert where alert_id ='" + alertId + "'";
-            logger.info("Qyuery " + query);
-            ResultSet rs = stmt.executeQuery(query);
+        String query = "select description from " + appdbName + ".cfg_feature_alert where alert_id ='" + alertId + "'";
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query);) {
             String alertDescription = null;
             while (rs.next()) {
                 alertDescription = rs.getString("description")
@@ -37,6 +29,7 @@ public class AlertApplication {
                     + "values('" + alertId + "',now(), now() ,'" + alertDescription + "'," + userId + ")";
             logger.info("Inserting alert  [" + sql + "]");
             stmt.executeUpdate(sql);
+            conn.close();
             return true;
         } catch (Exception e) {
             logger.error("Not able to update  " + e.toString() + " i.e. " + e.getLocalizedMessage());
