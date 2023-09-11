@@ -11,18 +11,16 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class ConnectionConfiguration {
-	
-	
-	@PersistenceContext
+
+    @PersistenceContext
     private EntityManager em;
-	
-	public Connection getConnection() {
-		EntityManagerFactoryInfo info = (EntityManagerFactoryInfo) em.getEntityManagerFactory();
-	    try {
-			return info.getDataSource().getConnection();
-		} catch (SQLException e) {
-			return null;
-		}
-	}
-	
+
+    public Connection getConnection() {
+        EntityManagerFactoryInfo info = (EntityManagerFactoryInfo) em.getEntityManagerFactory();
+        try {
+            return info.getDataSource().getConnection();
+        } catch (SQLException e) {
+            return null;
+        }
+    }
 }
